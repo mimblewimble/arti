@@ -206,9 +206,9 @@ impl GuardSet {
             });
         }
 
+        fix_id_list(&self.guards, &mut self.sample);
         let sample_set: HashSet<_> = self.sample.iter().collect();
         self.guards.retain(|g| sample_set.contains(g.guard_id()));
-        fix_id_list(&self.guards, &mut self.sample);
         fix_id_list(&self.guards, &mut self.confirmed);
         fix_id_list(&self.guards, &mut self.primary);
     }
@@ -1079,6 +1079,18 @@ mod test {
     fn netdir() -> NetDir {
         use tor_netdir::testnet;
         testnet::construct_netdir().unwrap_if_sufficient().unwrap()
+    }
+
+    #[test]
+    fn bridge_identity() {
+        let mut guards = GuardSet::default();
+        guards.extend_sample_as_needed(SystemTime::get(), &GuardParams::default(), &netdir());
+        let id = guards.sample[0].clone();
+        let mut ids = tor_linkspec::RelayIds::builder();
+        ids.rsa_identity(*id.0.rsa_identity().unwrap());
+        guards.sample[0] = GuardId(ids.build().unwrap());
+        guards.assert_consistency();
+        assert_eq!(guards.sample[0], id);
     }
 
     #[test]
