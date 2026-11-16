@@ -243,6 +243,16 @@ impl OnionServiceStatus {
         }
     }
 
+    /// Return the current high-level state of IPT manager component.
+    pub fn ipt_mgr_state(&self) -> State {
+        self.ipt_mgr.state
+    }
+
+    /// Return the current high-level state of publisher component.
+    pub fn publisher_state(&self) -> State {
+        self.publisher.state
+    }
+
     /// Return the most severe current problem
     pub fn current_problem(&self) -> Option<&Problem> {
         cfg_if::cfg_if! {
