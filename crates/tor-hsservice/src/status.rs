@@ -243,16 +243,6 @@ impl OnionServiceStatus {
         }
     }
 
-    /// Return the current high-level state of IPT manager component.
-    pub fn ipt_mgr_state(&self) -> State {
-        self.ipt_mgr.state
-    }
-
-    /// Return the current high-level state of publisher component.
-    pub fn publisher_state(&self) -> State {
-        self.publisher.state
-    }
-
     /// Return the most severe current problem
     pub fn current_problem(&self) -> Option<&Problem> {
         cfg_if::cfg_if! {
@@ -383,6 +373,13 @@ impl_status_sender!(IptMgrStatusSender, ipt_mgr);
 impl_status_sender!(PublisherStatusSender, publisher);
 #[cfg(feature = "hs-pow-full")]
 impl_status_sender!(PowManagerStatusSender, pow_manager);
+
+impl PublisherStatusSender {
+    /// Return the current high-level state of the publisher.
+    pub(crate) fn state(&self) -> State {
+        self.0.get().publisher.state
+    }
+}
 
 impl StatusSender {
     /// Create a new StatusSender with a given initial status.

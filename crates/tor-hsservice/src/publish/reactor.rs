@@ -1166,12 +1166,7 @@ impl<R: Runtime, M: Mockable> Reactor<R, M> {
 
     /// Unconditionally update the `PublishStatus` of the reactor with `new_state`.
     async fn update_publish_status(&mut self, new_state: PublishStatus) -> Result<(), Bug> {
-        let onion_status = match new_state {
-            PublishStatus::Idle => None,
-            PublishStatus::UploadScheduled
-            | PublishStatus::AwaitingIpts
-            | PublishStatus::RateLimited(_) => Some(State::Bootstrapping),
-        };
+        let onion_status = onion_state_for_publish_status(new_state, self.imm.status_tx.state());
 
         if let Some(onion_status) = onion_status {
             self.imm.status_tx.send(onion_status, None);
@@ -2212,6 +2207,24 @@ enum PublishStatus {
     AwaitingIpts,
 }
 
+/// Return the onion service publisher state to report for a `PublishStatus` change.
+fn onion_state_for_publish_status(
+    publish_status: PublishStatus,
+    current_state: State,
+) -> Option<State> {
+    match publish_status {
+        PublishStatus::Idle => None,
+        PublishStatus::UploadScheduled | PublishStatus::RateLimited(_)
+            if current_state.is_fully_reachable() =>
+        {
+            None
+        }
+        PublishStatus::UploadScheduled
+        | PublishStatus::AwaitingIpts
+        | PublishStatus::RateLimited(_) => Some(State::Bootstrapping),
+    }
+}
+
 /// The backoff schedule for the task that publishes descriptors.
 #[derive(Clone, Debug)]
 struct PublisherBackoffSchedule<M: Mockable> {
@@ -2306,6 +2319,30 @@ mod test {
     //! <!-- @@ end test lint list maintained by maint/add_warning @@ -->
     use super::*;
     use tor_netdir::testnet;
+    use tor_rtmock::MockRuntime;
+
+    #[test]
+    fn republish_keeps_reachable() {
+        assert_eq!(
+            onion_state_for_publish_status(PublishStatus::UploadScheduled, State::Running),
+            None
+        );
+        assert_eq!(
+            onion_state_for_publish_status(
+                PublishStatus::RateLimited(MockRuntime::new().now()),
+                State::DegradedReachable,
+            ),
+            None
+        );
+        assert_eq!(
+            onion_state_for_publish_status(PublishStatus::UploadScheduled, State::Shutdown),
+            Some(State::Bootstrapping)
+        );
+        assert_eq!(
+            onion_state_for_publish_status(PublishStatus::AwaitingIpts, State::Running),
+            Some(State::Bootstrapping)
+        );
+    }
 
     /// Create a `TimePeriodContext` from the specified upload results.
     fn create_time_period_ctx(
