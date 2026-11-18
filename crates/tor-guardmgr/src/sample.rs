@@ -994,7 +994,7 @@ impl GuardSet {
         /// using our preferred bridge.
         const MINIMUM: usize = 2;
 
-        let maximum = std::cmp::max(params.data_parallelism, MINIMUM);
+        let mut remaining = std::cmp::max(params.data_parallelism, MINIMUM);
         let data_usage = GuardUsage::default();
 
         // Here we duplicate some but not all of the restrictions above in
@@ -1013,8 +1013,13 @@ impl GuardSet {
                     && g.ready_for_usage(&data_usage, now)
                     && self.active_filter.permits(*g)
             })
-            .take(maximum)
-            .map(|(_, g)| g)
+            .filter_map(|(_, g)| {
+                // Retries don't count towards the limit
+                if !bridges.descriptor_failed(g) {
+                    remaining = remaining.checked_sub(1)?;
+                }
+                Some(g)
+            })
             .collect()
     }
 }

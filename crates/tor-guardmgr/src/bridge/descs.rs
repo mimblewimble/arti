@@ -193,6 +193,15 @@ impl BridgeSet {
         })
     }
 
+    /// Whether the last descriptor fetch failed
+    pub(crate) fn descriptor_failed(&self, guard: &impl ChanTarget) -> bool {
+        matches!(
+            self.bridge_by_guard(guard)
+                .and_then(|bridge| self.descs.as_ref()?.get(bridge)),
+            Some(Err(_))
+        )
+    }
+
     /// Return a BridgeRelay wrapping the provided configuration, plus any known
     /// descriptor for that configuration.
     fn relay_by_bridge<'a>(&'a self, bridge: &'a BridgeConfig) -> BridgeRelay<'a> {
