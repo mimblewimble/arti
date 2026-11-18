@@ -368,6 +368,17 @@ impl Guard {
         self.unlisted_since.is_none() && self.disabled.is_none()
     }
 
+    /// Allow descriptor requests for re-added bridges that still need verification.
+    #[cfg(feature = "bridge-client")]
+    pub(crate) fn usable_for_bridge_descriptor(&self, bridges: &crate::bridge::BridgeSet) -> bool {
+        self.disabled.is_none()
+            && (self.unlisted_since.is_none()
+                || matches!(
+                    bridges.bridge_relay_by_guard(self),
+                    sample::CandidateStatus::Uncertain
+                ))
+    }
+
     /// Return true if this guard is ready (with respect to any timeouts) for
     /// the given `usage` at `now`.
     pub(crate) fn ready_for_usage(&self, usage: &GuardUsage, now: Instant) -> bool {

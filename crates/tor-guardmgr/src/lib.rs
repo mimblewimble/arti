@@ -1076,7 +1076,7 @@ impl GuardMgrInner {
             let desired: Vec<_> = self
                 .guards
                 .active_guards()
-                .descriptors_to_request(now, &self.params)
+                .descriptors_to_request(now, &self.params, &bridge_set)
                 .into_iter()
                 .flat_map(|guard| bridge_set.bridge_by_guard(guard))
                 .cloned()

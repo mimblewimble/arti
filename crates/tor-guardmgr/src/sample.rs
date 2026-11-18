@@ -983,7 +983,12 @@ impl GuardSet {
     /// (The output of this function is not reasonable unless this is a Bridge
     /// sample.)
     #[cfg(feature = "bridge-client")]
-    pub(crate) fn descriptors_to_request(&self, now: Instant, params: &GuardParams) -> Vec<&Guard> {
+    pub(crate) fn descriptors_to_request(
+        &self,
+        now: Instant,
+        params: &GuardParams,
+        bridges: &crate::bridge::BridgeSet,
+    ) -> Vec<&Guard> {
         /// This constant is here to improve our odds that we can get a working
         /// bridge if we have any per-circuit filters that would prevent us from
         /// using our preferred bridge.
@@ -1003,7 +1008,7 @@ impl GuardSet {
         // doesn't give us surprising results.
         self.preference_order()
             .filter(|(_, g)| {
-                g.usable()
+                g.usable_for_bridge_descriptor(bridges)
                     && g.reachable() != Reachable::Unreachable
                     && g.ready_for_usage(&data_usage, now)
                     && self.active_filter.permits(*g)
